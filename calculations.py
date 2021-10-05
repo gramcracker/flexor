@@ -87,11 +87,11 @@ y = []
 
 # We're going to go for (100,000 * .00001) seconds (1 second)
 for i in range(100000):
-    v = velocity(I, t, v, opposingForce)*t
+    # v = velocity(I, t, v, opposingForce)*t
     # Comment out above, and uncomment brlow to show graph 
     # of current slightly above holding force, allowing it 
     # to keep accelerating upwards.
-    # v = velocity(I2, t, v, opposingForce)*t
+    v = velocity(I2, t, v, opposingForce)*t
 
     #this means only plot every thousanth step
     if i%1000 == 0:
