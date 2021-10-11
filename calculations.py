@@ -20,11 +20,24 @@ mu_r_unknown = mu_0*700
 coreMu = mu_r_unknown
 coreMass = 0.000785 #Kilograms
 length = .035 #Meters
-numLoops = 120 #Rough estimation
 coreRadius = .0008 #Meters
-crossSectionalArea = m.pi*(coreRadius**2)
-resistance = 1.01
+coilRadius = .00165 #Meters
+wireRadius = 0.00015 #Meters
+#wireRadius = 2 * (10**(-6)) #44 gauge
+numLoops = length / (wireRadius * 2)
+#uncomment to set numloops
+#numLoops = 120
+print("numLoops: ", numLoops)
+
+wireCrossSecionalArea = m.pi * (wireRadius**2)
+coreCrossSectionalArea = m.pi * (coreRadius**2)
+wireLength = numLoops * (2 * m.pi * coilRadius)
+wireResistivity = 1.68 * (10**(-8))
+resistance = wireLength * wireResistivity / wireCrossSecionalArea
+print("resistance: ", resistance)
 n = numLoops/length
+# Define limiting variables here:
+maxWireHeat = 155 # Celcius
 
 # Since only a portion of the solenoid contains the core,
 # we calculate a new mu = mu_0 * (% air) + mu_core * (% core)
@@ -35,7 +48,7 @@ def normalizedMu(lenCore):
 # length of the core that is enclosed in the solenoid
 # http://hyperphysics.phy-astr.gsu.edu/hbase/magnetic/indcur.html#c1
 def inductance(lenCore):
-    return crossSectionalArea*(n**2)*normalizedMu(lenCore)
+    return coreCrossSectionalArea*(n**2)*normalizedMu(lenCore)
 
 # Becasue of self inductance, the current in a solenoid
 # takes time to reach the applied current. 
@@ -47,13 +60,13 @@ def newCurrent(appliedCurrent, time, inductance):
 # Using my calculations from previous logs
 def force(appliedCurrent, time, lenCore, opposingForce):
     i = newCurrent(appliedCurrent, time, inductance(lenCore))
-    f = (crossSectionalArea*(coreMu-mu_0)/2)*((n*i)**2)
+    f = (coreCrossSectionalArea*(coreMu-mu_0)/2)*((n*i)**2)
     return f - opposingForce
 
 # Solves for current needed to give a force equal to the opposing force
 # based on the same force calculation above.
 def getHoldingCurrent(opposingForce):
-    return m.sqrt((2*opposingForce)/(crossSectionalArea * (coreMu - mu_0)))/n
+    return m.sqrt((2*opposingForce)/(coreCrossSectionalArea * (coreMu - mu_0)))/n
 
 # F = ma, so a = (calculated force)/mass
 def acceleration(appliedCurrent, time, lenCore, opposingForce):
@@ -68,13 +81,19 @@ def velocity(appliedCurrent, time, lenCore, opposingForce):
 def newLenCore(lenCore, speed, time):
     return lenCore + (speed*time)
 
+# Get the heat emitted from wire
+def heat(resistance, current, time):
+    return (current**2)*resistance*time
+
+
+
 # Position is vertical, so opposing force is mass*gravity
 opposingForce = coreMass * gravity
 # Set the current to what is needed to oppose gravity
 # should cause acceleration to 0 out
 I = getHoldingCurrent(opposingForce)
 # Other test current should cause continuous acceleration
-I2 = I+.01
+# I2 = I+.01
 # Starting at time = 0
 t = 0
 # Time step
@@ -82,27 +101,37 @@ step = .00001
 # Initial velocity
 v = 0
 # lists to store points for the plot
-time = []
-y = []
+graphTime = []
+graphVelocity = []
+graphHeat = []
 
 # We're going to go for (100,000 * .00001) seconds (1 second)
 for i in range(100000):
-    # v = velocity(I, t, v, opposingForce)*t
-    # Comment out above, and uncomment brlow to show graph 
+    v = velocity(I, t, v, opposingForce)*t
+    # Comment out above, and uncomment below to show graph 
     # of current slightly above holding force, allowing it 
     # to keep accelerating upwards.
-    v = velocity(I2, t, v, opposingForce)*t
+    # v = velocity(I2, t, v, opposingForce)*t
 
     #this means only plot every thousanth step
     if i%1000 == 0:
-        time.append(t)
-        y.append(v)
+        wireHeat = heat(resistance, I, t)
+        if(wireHeat > maxWireHeat):
+            print("Enamel melted, expect short!")
+
+        graphTime.append(t)
+        graphVelocity.append(v)
+        graphHeat.append(wireHeat)
+
     t += step
-    a = np.array(time)
-    b = np.array(y)
+
+
 print("calculated holding current:",I)
 # Plot
-pp.plot(a, b)
-pp.xlabel("time")
-pp.ylabel("velocity")
+fig, axs = pp.subplots(2)
+axs[0].plot(graphTime, graphVelocity)
+axs[0].set(xlabel = "time", ylabel = "velocity")
+
+axs[1].plot(graphTime, graphHeat, 'tab:red')
+axs[1].set(xlabel = "time", ylabel = "heat")
 pp.show()
