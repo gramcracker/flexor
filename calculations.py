@@ -22,19 +22,19 @@ coreMass = 0.000785 #Kilograms
 length = .035 #Meters
 coreRadius = .0008 #Meters
 coilRadius = .00165 #Meters
-wireRadius = 0.00015 #Meters
-#wireRadius = 2 * (10**(-6)) #44 gauge
-numLoops = length / (wireRadius * 2)
-#uncomment to set numloops
-#numLoops = 120
-print("numLoops: ", numLoops)
+#wireRadius = 0.00015 #Meters
+wireRadius = 5 * (10 ** (-5)) #44 gauge
+numLoops = length / (2 * wireRadius)
+#uncomment to set numloops manually
+#numLoops = 500
+maxVoltage = 9
+
 
 wireCrossSecionalArea = m.pi * (wireRadius**2)
 coreCrossSectionalArea = m.pi * (coreRadius**2)
 wireLength = numLoops * (2 * m.pi * coilRadius)
 wireResistivity = 1.68 * (10**(-8))
 resistance = wireLength * wireResistivity / wireCrossSecionalArea
-print("resistance: ", resistance)
 n = numLoops/length
 # Define limiting variables here:
 maxWireHeat = 155 # Celcius
@@ -54,7 +54,10 @@ def inductance(lenCore):
 # takes time to reach the applied current. 
 # http://hyperphysics.phy-astr.gsu.edu/hbase/electric/indtra.html#c1
 def newCurrent(appliedCurrent, time, inductance):
-    return appliedCurrent*(1-m.exp(-(resistance*time/inductance)))
+    i = appliedCurrent*(1-m.exp(-(resistance*time/inductance)))
+    if (i*resistance > maxVoltage):
+        i = (maxVoltage / resistance)
+    return i 
 
 
 # Using my calculations from previous logs
@@ -104,6 +107,7 @@ v = 0
 graphTime = []
 graphVelocity = []
 graphHeat = []
+short = False
 
 # We're going to go for (100,000 * .00001) seconds (1 second)
 for i in range(100000):
@@ -117,7 +121,7 @@ for i in range(100000):
     if i%1000 == 0:
         wireHeat = heat(resistance, I, t)
         if(wireHeat > maxWireHeat):
-            print("Enamel melted, expect short!")
+            short = True
 
         graphTime.append(t)
         graphVelocity.append(v)
@@ -125,8 +129,14 @@ for i in range(100000):
 
     t += step
 
+if(short): print("Enamel melted, expect short!")
+print("numLoops: ", numLoops)
+print("resistance: ", resistance)
+print("calculated holding votage: ", I*resistance)
+print("calculated holding current: ",I)
+print("max voltage: ", maxVoltage)
+print("max current: ", maxVoltage / resistance)
 
-print("calculated holding current:",I)
 # Plot
 fig, axs = pp.subplots(2)
 axs[0].plot(graphTime, graphVelocity)
